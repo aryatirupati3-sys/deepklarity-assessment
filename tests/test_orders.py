@@ -27,6 +27,17 @@ class OrderDeskTest(unittest.TestCase):
         self.assertEqual(order["discount_cents"], 120)
         self.assertEqual(order["total_cents"], 1080)
 
+    def test_coupon_tax_calculated_after_discount(self):
+        order = self.app.orders.create(
+            "ana",
+            [("MUG", 1)],
+            region="CA",
+            coupon_code="TEN"
+        )
+        self.assertEqual(order["discount_cents"], 120)
+        self.assertEqual(order["tax_cents"], 78)
+        self.assertEqual(order["total_cents"], 1158)
+
     def test_out_of_stock(self):
         with self.assertRaises(OutOfStock):
             self.app.orders.create("ana", [("TEE", 4)])
@@ -40,17 +51,14 @@ class OrderDeskTest(unittest.TestCase):
 
     def test_duplicate_payment_event(self):
         order = self.app.orders.create("ana", [("MUG", 1)])
-
         event = {
             "id": "evt_duplicate",
             "type": "payment.succeeded",
             "order_id": order["id"],
             "amount_cents": 1200
         }
-
         self.app.payments.handle_event(event)
         self.app.payments.handle_event(event)
-
         self.assertEqual(self.app.payments.paid_cents(order["id"]), 1200)
 
     def test_cancel_paid_order_restocks(self):
@@ -62,9 +70,7 @@ class OrderDeskTest(unittest.TestCase):
 
     def test_cancel_pending_order_restocks(self):
         order = self.app.orders.create("ana", [("MUG", 1)])
-
         self.app.orders.cancel(order["id"])
-
         self.assertEqual(self.app.catalog.get_product("MUG").stock, 10)
 
     def test_daily_sales(self):
@@ -72,8 +78,34 @@ class OrderDeskTest(unittest.TestCase):
         noon = datetime(2025, 3, 10, 12, 0, tzinfo=timezone.utc)
         self.app.payments.handle_event(
             {"id": "evt_3", "type": "payment.succeeded", "order_id": order["id"], "amount_cents": 1200}, now=noon)
-        self.assertEqual(reports.daily_sales(self.conn, "2025-03-10"),
-                         {"day": "2025-03-10", "revenue_cents": 1200, "orders": 1})
+        self.assertEqual(
+            reports.daily_sales(self.conn, "2025-03-10"),
+            {"day": "2025-03-10", "revenue_cents": 1200, "orders": 1}
+        )
+
+    def test_daily_sales_india_timezone(self):
+        order = self.app.orders.create("ana", [("MUG", 1)])
+
+        payment_time = datetime(2025, 3, 10, 20, 0, tzinfo=timezone.utc)
+
+        self.app.payments.handle_event(
+            {
+                "id": "evt_india",
+                "type": "payment.succeeded",
+                "order_id": order["id"],
+                "amount_cents": 1200
+            },
+            now=payment_time
+        )
+
+        self.assertEqual(
+            reports.daily_sales(self.conn, "2025-03-11", utc_offset_minutes=330),
+            {
+                "day": "2025-03-11",
+                "revenue_cents": 1200,
+                "orders": 1
+            }
+        )
 
     def test_price_change(self):
         self.app.handle("PUT", "/products/MUG", {"price_cents": 1500})
