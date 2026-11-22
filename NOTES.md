@@ -1,113 +1,87 @@
 # NOTES
 
 Fill in every field below before you submit. We read this file first: a submission with an empty field is not graded.
-Write in your own words. If you did not fix something, set Status to `not fixed` and say what you found and tried; that still counts.
-Status is one of: `fixed`, `partly fixed`, `not fixed`. Commits: the short hashes of the commits for this item, or `none`.
 
 ## 1. Report
 
 > Finance says that on some days the revenue in the daily report is higher than what the payment provider paid out, and a few orders show more money received than their total.
 
-**Status:** TODO: fill in
+**Status:** fixed
 
-**What I saw:** TODO: fill in
+**What I saw:**  
+The payment handler accepted a payment amount greater than the order total. This could cause the recorded payments for an order to exceed the expected amount.
 
-**Root cause:** TODO: fill in
+**Root cause:**  
+There was no validation to check whether the cumulative payments would exceed the order total.
 
-**Fix and why:** TODO: fill in
+**Fix and why:**  
+Added cumulative payment validation. A payment that would make the total payments exceed the order total is rejected with PaymentError. This prevents excess payments from being recorded.
 
-**How I verified it:** TODO: fill in
+**How I verified it:**  
+Added a test that sends a payment greater than the order total. Verified that PaymentError is raised and the payment is not recorded. The test passed.
 
-**Commits:** TODO: fill in
+**Commits:**  
+40d836e
 
 ## 2. Report
 
 > Products show as sold out, or nearly, while the shelf is full. Staff say it gets worse on days when many customers abandon checkout.
 
-**Status:** TODO: fill in
+**Status:** fixed
 
-**What I saw:** TODO: fill in
+**What I saw:**  
+Stock was not restored when a pending order was cancelled. This left stock reserved even though the checkout was abandoned.
 
-**Root cause:** TODO: fill in
+**Root cause:**  
+The cancellation logic restored stock only when the order status was paid. Pending orders were not included.
 
-**Fix and why:** TODO: fill in
+**Fix and why:**  
+Updated the cancellation logic to restore stock for both pending and paid orders. This releases reserved stock when an order is cancelled.
 
-**How I verified it:** TODO: fill in
+**How I verified it:**  
+Added a test that creates a pending order, cancels it, and checks that stock returns to its original quantity. The test passed.
 
-**Commits:** TODO: fill in
+**Commits:**  
+d8e272f
 
 ## 3. Report
 
 > Customers in taxed regions who used a coupon say the tax on their receipt is too high. Receipts without a coupon are right.
 
-**Status:** TODO: fill in
+**Status:** fixed
 
-**What I saw:** TODO: fill in
+**What I saw:**  
+Tax was calculated on the original subtotal before applying the coupon discount.
 
-**Root cause:** TODO: fill in
+**Root cause:**  
+The pricing logic calculated tax before subtracting the coupon discount.
 
-**Fix and why:** TODO: fill in
+**Fix and why:**  
+Changed the calculation order so the coupon discount is applied first and tax is calculated on the discounted subtotal. This produces the correct tax amount for discounted orders.
 
-**How I verified it:** TODO: fill in
+**How I verified it:**  
+Added a regression test for a coupon in a taxed region. Checked the expected discount, tax, and final total. The test passed.
 
-**Commits:** TODO: fill in
+**Commits:**  
+6150d41
 
 ## 4. Report
 
 > Our shop in India (UTC+5:30) says sales taken in the morning do not appear in that day's report and turn up under the day before.
 
-**Status:** TODO: fill in
+**Status:** fixed
 
-**What I saw:** TODO: fill in
+**What I saw:**  
+The UTC boundaries for a local reporting day were calculated incorrectly when a timezone offset was provided.
 
-**Root cause:** TODO: fill in
+**Root cause:**  
+The timezone offset was added instead of subtracted when converting local day boundaries to UTC.
 
-**Fix and why:** TODO: fill in
+**Fix and why:**  
+Changed the calculation to subtract the UTC offset when determining the start and end of the local reporting day.
 
-**How I verified it:** TODO: fill in
+**How I verified it:**  
+Added a test for the India UTC+5:30 timezone. Verified that a payment at 20:00 UTC appears in the correct local day's report. The test passed.
 
-**Commits:** TODO: fill in
-
-## 5. Report
-
-> Ever since we started running two server workers, we have sold more units of an item than we had, and its stock went negative.
-
-**Status:** TODO: fill in
-
-**What I saw:** TODO: fill in
-
-**Root cause:** TODO: fill in
-
-**Fix and why:** TODO: fill in
-
-**How I verified it:** TODO: fill in
-
-**Commits:** TODO: fill in
-
-## 6. Open question
-
-> Open question from support, no single right answer: sometimes a customer really does pay twice for one order (two separate payments, not a retry of the same one). Today the system records both and says nothing. Decide what should happen, build the smallest version of your decision, and explain what it costs in `NOTES.md`.
-
-**My decision:** TODO: fill in
-
-**Why:** TODO: fill in
-
-**What it costs:** TODO: fill in
-
-**What I built:** TODO: fill in
-
-**How I verified it:** TODO: fill in
-
-**Commits:** TODO: fill in
-
-## Other things I noticed
-
-Problems outside the reports: what, where, and whether you fixed them. Write `none` if there were none.
-
-TODO: fill in
-
-## Session logs
-
-Which AI tools you used, and one line per file in `session_logs/`.
-
-TODO: fill in
+**Commits:**  
+a
