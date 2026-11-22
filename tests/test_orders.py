@@ -83,6 +83,33 @@ class OrderDeskTest(unittest.TestCase):
         self.app.payments.handle_event(event)
         self.assertEqual(self.app.payments.paid_cents(order["id"]), 1200)
 
+    def test_reject_separate_second_payment(self):
+        order = self.app.orders.create("ana", [("MUG", 1)])
+
+        first_event = {
+            "id": "evt_first",
+            "type": "payment.succeeded",
+            "order_id": order["id"],
+            "amount_cents": order["total_cents"]
+        }
+
+        second_event = {
+            "id": "evt_second",
+            "type": "payment.succeeded",
+            "order_id": order["id"],
+            "amount_cents": order["total_cents"]
+        }
+
+        self.app.payments.handle_event(first_event)
+
+        with self.assertRaises(PaymentError):
+            self.app.payments.handle_event(second_event)
+
+        self.assertEqual(
+            self.app.payments.paid_cents(order["id"]),
+            order["total_cents"]
+        )
+
     def test_cancel_paid_order_restocks(self):
         order = self.app.orders.create("ana", [("TEE", 2)])
         self.app.payments.handle_event(
