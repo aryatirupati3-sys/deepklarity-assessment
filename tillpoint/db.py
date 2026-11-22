@@ -1,3 +1,4 @@
+
 """SQLite storage. All money is integer cents; all timestamps are UTC ISO-8601 strings."""
 import sqlite3
 from datetime import datetime, timezone
@@ -38,7 +39,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     order_id INTEGER NOT NULL REFERENCES orders(id),
-    event_id TEXT NOT NULL,
+    event_id TEXT NOT NULL UNIQUE,
     amount_cents INTEGER NOT NULL,
     received_at TEXT NOT NULL
 );
