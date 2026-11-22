@@ -6,6 +6,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from tillpoint import db
+from tillpoint.catalog import Catalog, UnknownProduct
 from tillpoint.api import App, dumps
 
 
@@ -30,8 +31,16 @@ def make_handler(app):
 if __name__ == "__main__":
     path = sys.argv[1] if len(sys.argv) > 1 else "tillpoint.db"
     default_port = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
-
     port = int(os.environ.get("PORT", default_port))
 
-    app = App(db.connect(path))
+    conn = db.connect(path)
+
+    # Add a demo product only when the catalog is empty of this SKU.
+    catalog = Catalog(conn)
+    try:
+        catalog.get_product("P001")
+    except UnknownProduct:
+        catalog.add_product("P001", "Test Product", 10000, 10)
+
+    app = App(conn)
     HTTPServer(("0.0.0.0", port), make_handler(app)).serve_forever()
