@@ -60,6 +60,13 @@ class OrderDeskTest(unittest.TestCase):
         self.app.orders.cancel(order["id"])
         self.assertEqual(self.app.catalog.get_product("TEE").stock, 3)
 
+    def test_cancel_pending_order_restocks(self):
+        order = self.app.orders.create("ana", [("MUG", 1)])
+
+        self.app.orders.cancel(order["id"])
+
+        self.assertEqual(self.app.catalog.get_product("MUG").stock, 10)
+
     def test_daily_sales(self):
         order = self.app.orders.create("ana", [("MUG", 1)])
         noon = datetime(2025, 3, 10, 12, 0, tzinfo=timezone.utc)
