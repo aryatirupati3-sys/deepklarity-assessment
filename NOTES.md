@@ -84,4 +84,56 @@ Changed the calculation to subtract the UTC offset when determining the start an
 Added a test for the India UTC+5:30 timezone. Verified that a payment at 20:00 UTC appears in the correct local day's report. The test passed.
 
 **Commits:**  
-a
+a26abc2, aec0b2a
+
+## 5. Report
+
+> On busy days, two workers sometimes sell the same last unit and inventory becomes negative.
+
+**Status:** not fixed
+
+**What I saw:**  
+I tested two concurrent orders attempting to purchase the last available unit. Only one order succeeded, while the other received OutOfStock. Stock remained zero. I could not reproduce the reported overselling issue in this test.
+
+**Root cause:**  
+The exact cause of the reported issue was not confirmed. The existing order creation flow uses a SQLite BEGIN IMMEDIATE transaction before checking and reserving stock, which serialized the two tested order attempts.
+
+**Fix and why:**  
+No additional code change was made because the tested scenario did not reproduce the issue. Further testing in the actual two-worker deployment may be needed.
+
+**How I verified it:**  
+Added a concurrency test using two separate SQLite connections and threads. Verified that exactly one order succeeds, the other receives OutOfStock, and stock does not become negative.
+
+**Commits:**  
+none
+
+## 6. Open question
+
+> A payment provider retries a successful payment webhook. Sometimes a second, separate payment also arrives for an order that is already fully paid. Decide how to handle both cases.
+
+**My decision:**  
+Reject a separate payment if it would make the cumulative payments exceed the order total. Ignore repeated deliveries of the same payment event.
+
+**Why:**  
+This prevents the same webhook event from being counted twice and prevents a second full payment from being recorded as additional revenue for an already-paid order.
+
+**What it costs:**  
+A genuine extra payment is rejected by the application. If the payment provider has already collected the money, it may require manual investigation or a refund. Automatic refunds are not implemented.
+
+**What I built:**  
+Added duplicate webhook event protection using a unique event ID and cumulative payment validation. Repeated delivery of the same event is ignored, and a separate payment with a different event ID is rejected if it exceeds the order total.
+
+**How I verified it:**  
+Added tests for repeated delivery of the same event ID, a payment greater than the order total, and a second payment with a different event ID. Verified that payments are not counted twice or allowed to exceed the order total. The tests passed.
+
+**Commits:**  
+1d0f520, 40d836e, d2e355c
+
+## Other things I noticed
+
+The payment event_id UNIQUE constraint is defined in the database schema. Existing databases created before this schema change may need a database migration because CREATE TABLE IF NOT EXISTS does not modify an existing table.
+
+## Session logs
+
+AI tool used: ChatGPT.  
+A ChatGPT AI session summary was saved as `session_logs/chatgpt_session_log_summary.md`. This is a summary, not a verbatim full conversation export. The assessment brief requests the full conversation, so this summary should not be represented as a complete transcript.
